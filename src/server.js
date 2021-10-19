@@ -18,13 +18,25 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({server}); // http서버위에 ws서버를 만들 수 있음
 //new WebSocket.Server(); 서버를 꼭 포함하지 않아도 됨
 
+const sockets = [];
+
+// 파라미터로 넘기는 socket은 연결된 클라이언트이다.
 wss.on("connection", socket => {
+    sockets.push(socket);
+    socket["nickname"] = "Anony"
     console.log("Connected to Browser ✓");
     socket.on("close", () => console.log("Disconnected to Browser ❌"));
-    socket.on("message", message => {
-        console.log(message.toString());
+    socket.on("message", msg => {
+        const message = JSON.parse(msg);
+        switch(message.type) {
+            case "new_message":
+                sockets.forEach(aSocket => aSocket.send(`${socket.nickname}: ${message.payload}`));
+                break;
+            case "nickname":
+                socket["nickname"] = message.payload;
+                break;
+        }
     })
-    socket.send("hello");
 });
 
 // 2개의 프로토콜(http, ws)이 하나의 포트 3000을 공유함
