@@ -1,5 +1,5 @@
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 import express from "express";
 
 const app = express();
@@ -13,12 +13,20 @@ app.get("/*", (req, res) => res.redirect("/"));
 const handleListen = () => console.log(`Listening on http://localhost:3000`);
 // ws://localhost:3000  3000은 ws도 가능
 
-const server = http.createServer(app);
+const httpServer = http.createServer(app);
+const wsServer = SocketIO(httpServer); 
 
-const wss = new WebSocket.Server({server}); // http서버위에 ws서버를 만들 수 있음
+wsServer.on("connection", socket => {
+    socket.on("enter_room", (msg, func) => {console.log(msg)
+    setTimeout(() => {
+        func();
+    }, 4000)});
+})
+
+// const wss = new WebSocket.Server({server}); // http서버위에 ws서버를 만들 수 있음
 //new WebSocket.Server(); 서버를 꼭 포함하지 않아도 됨
 
-const sockets = [];
+/* const sockets = [];
 
 // 파라미터로 넘기는 socket은 연결된 클라이언트이다.
 wss.on("connection", socket => {
@@ -37,7 +45,7 @@ wss.on("connection", socket => {
                 break;
         }
     })
-});
+}); */
 
 // 2개의 프로토콜(http, ws)이 하나의 포트 3000을 공유함
-server.listen(3000, handleListen);
+httpServer.listen(3000, handleListen);
