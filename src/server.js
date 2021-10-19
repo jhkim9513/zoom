@@ -14,14 +14,16 @@ const handleListen = () => console.log(`Listening on http://localhost:3000`);
 // ws://localhost:3000  3000은 ws도 가능
 
 const httpServer = http.createServer(app);
-const wsServer = SocketIO(httpServer); 
+const wsServer = SocketIO(httpServer);
 
 wsServer.on("connection", socket => {
-    socket.on("enter_room", (msg, func) => {console.log(msg)
-    setTimeout(() => {
-        func();
-    }, 4000)});
-})
+    socket.on("enter_room", (roomName, done) => {
+        console.log(roomName) 
+        setTimeout(() => {
+            done('yahoo');
+        }, 3000)
+    })
+});
 
 // const wss = new WebSocket.Server({server}); // http서버위에 ws서버를 만들 수 있음
 //new WebSocket.Server(); 서버를 꼭 포함하지 않아도 됨
