@@ -19,7 +19,12 @@ const wss = new WebSocket.Server({server}); // http서버위에 ws서버를 만�
 //new WebSocket.Server(); 서버를 꼭 포함하지 않아도 됨
 
 wss.on("connection", socket => {
-    console.log(socket);
+    console.log("Connected to Browser ✓");
+    socket.on("close", () => console.log("Disconnected to Browser ❌"));
+    socket.on("message", message => {
+        console.log(message.toString());
+    })
+    socket.send("hello");
 });
 
 // 2개의 프로토콜(http, ws)이 하나의 포트 3000을 공유함
