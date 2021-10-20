@@ -57,12 +57,20 @@ wsServer.on("connection", (socket) => {
     // to()를 사용하여 특정 방을 지정하여 emit할 수 있다. 이는 여러개도 가능 socket.to(room1).to(room3).emit("welcome")
     socket.to(roomName).emit("welcome", socket.nickname);
 
+    //io.sockets.emit을 통해 모든 방에 이벤트를 보낼 수 있다.
+    wsServer.sockets.emit("room_change", publicRooms());
+
     // disconnecting은 연결이 완전히 끊어진것이 아니라 연결이 끊기기 전을 의미한다.
     socket.on("disconnecting", () => {
       socket.rooms.forEach((room) => {
         socket.to(room).emit("bye", socket.nickname);
       });
     });
+    // disconnect는 연결이 끊어진 후 작업이다.
+    socket.on("disconnect", () => {
+      wsServer.sockets.emit("room_change", publicRooms());
+    });
+
     socket.on("new_message", (msg, room, done) => {
       socket.to(room).emit("new_message", `${socket.nickname}: ${msg}`);
       done();
