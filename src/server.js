@@ -17,6 +17,7 @@ const httpServer = http.createServer(app);
 const wsServer = SocketIO(httpServer);
 
 wsServer.on("connection", socket => {
+    socket["nickname"] = "Anon";
     socket.onAny((event) => {
         console.log(`Socket Event:${event}`);
     });
@@ -31,18 +32,21 @@ wsServer.on("connection", socket => {
         console.log(socket.rooms); // Set { <socket.id>, "room1" } 
         done();
         // to()를 사용하여 특정 방을 지정하여 emit할 수 있다. 이는 여러개도 가능 socket.to(room1).to(room3).emit("welcome")
-        socket.to(roomName).emit("welcome");
+        socket.to(roomName).emit("welcome", socket.nickname);
 
         // disconnecting은 연결이 완전히 끊어진것이 아니라 연결이 끊기기 전을 의미한다.
         socket.on("disconnecting", () => {
             socket.rooms.forEach(room => {
-                socket.to(room).emit("bye");
+                socket.to(room).emit("bye", socket.nickname);
             });
-        })
+        });
         socket.on("new_message", (msg, room, done) => {
-            socket.to(room).emit("new_message", msg);
+            socket.to(room).emit("new_message", `${socket.nickname}: ${msg}`);
             done();
-        })
+        });
+        socket.on("nickname", nickname => (
+            socket["nickname"] = nickname
+        ));
     })
 });
 
