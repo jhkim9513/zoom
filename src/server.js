@@ -1,5 +1,7 @@
 import http from "http";
-import SocketIO from "socket.io";
+// import SocketIO from "socket.io";
+import { Server } from "socket.io";
+import { instrument } from "@socket.io/admin-ui";
 import express from "express";
 
 const app = express();
@@ -7,14 +9,24 @@ const app = express();
 app.set("view engine", "pug");
 app.set("views", __dirname + "/views");
 app.use("/public", express.static(__dirname + "/public"));
-app.get("/", (req, res) => res.render("home"));
-app.get("/*", (req, res) => res.redirect("/"));
+app.get("/", (_, res) => res.render("home"));
+app.get("/*", (_, res) => res.redirect("/"));
 
 const handleListen = () => console.log(`Listening on http://localhost:3000`);
 // ws://localhost:3000  3000은 ws도 가능
 
 const httpServer = http.createServer(app);
-const wsServer = SocketIO(httpServer);
+// const wsServer = SocketIO(httpServer);
+// admin UI를 사용할 때 설정
+const wsServer = new Server(httpServer, {
+  cors: {
+    origin: ["https://admin.socket.io"],
+    credentials: true,
+  },
+});
+instrument(wsServer, {
+  auth: false,
+});
 
 function publicRooms() {
   //wsServer의 adapter안에있는 sids(사용자 id 모음)와 rooms(서버가 가지고있는 방 모음)에 접근
@@ -37,6 +49,10 @@ function publicRooms() {
   return publicRooms;
 }
 
+function countRoom(roomName) {
+  return wsServer.sockets.adapter.rooms.get(roomName)?.size;
+}
+
 wsServer.on("connection", (socket) => {
   socket["nickname"] = "Anon";
   // onAny의 파라미터 event는 어떤 event가 emit됬는지 확인 하는데 사용가능하다.
@@ -55,7 +71,7 @@ wsServer.on("connection", (socket) => {
     console.log(socket.rooms); // Set { <socket.id>, "room1" }
     done();
     // to()를 사용하여 특정 방을 지정하여 emit할 수 있다. 이는 여러개도 가능 socket.to(room1).to(room3).emit("welcome")
-    socket.to(roomName).emit("welcome", socket.nickname);
+    socket.to(roomName).emit("welcome", socket.nickname, countRoom(roomName));
 
     //io.sockets.emit을 통해 모든 방에 이벤트를 보낼 수 있다.
     wsServer.sockets.emit("room_change", publicRooms());
@@ -63,7 +79,7 @@ wsServer.on("connection", (socket) => {
     // disconnecting은 연결이 완전히 끊어진것이 아니라 연결이 끊기기 전을 의미한다.
     socket.on("disconnecting", () => {
       socket.rooms.forEach((room) => {
-        socket.to(room).emit("bye", socket.nickname);
+        socket.to(room).emit("bye", socket.nickname, countRoom(roomName) - 1);
       });
     });
     // disconnect는 연결이 끊어진 후 작업이다.
