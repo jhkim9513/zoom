@@ -17,11 +17,32 @@ const httpServer = http.createServer(app);
 const wsServer = SocketIO(httpServer);
 
 wsServer.on("connection", socket => {
+    socket.onAny((event) => {
+        console.log(`Socket Event:${event}`);
+    });
+    // 레퍼런스 : https://socket.io/docs/v4/server-api/#socketid
     socket.on("enter_room", (roomName, done) => {
-        console.log(roomName) 
-        setTimeout(() => {
-            done('yahoo');
-        }, 3000)
+        // socket에는 id가 존재해서 구분이 가능하다.
+        console.log(socket.id);
+        // socket.rooms를 통해 socket이 어떤 방에 들어가있는지 알 수 있다.
+        console.log(socket.rooms); // Set { <socket.id> }
+        // join으로 해당 이름의 room에 입장할 수 있다. 여러방에도 입장 가능 ["room1", "room2"]
+        socket.join(roomName);
+        console.log(socket.rooms); // Set { <socket.id>, "room1" } 
+        done();
+        // to()를 사용하여 특정 방을 지정하여 emit할 수 있다. 이는 여러개도 가능 socket.to(room1).to(room3).emit("welcome")
+        socket.to(roomName).emit("welcome");
+
+        // disconnecting은 연결이 완전히 끊어진것이 아니라 연결이 끊기기 전을 의미한다.
+        socket.on("disconnecting", () => {
+            socket.rooms.forEach(room => {
+                socket.to(room).emit("bye");
+            });
+        })
+        socket.on("new_message", (msg, room, done) => {
+            socket.to(room).emit("new_message", msg);
+            done();
+        })
     })
 });
 
