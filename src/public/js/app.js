@@ -14,6 +14,7 @@ let muted = false;
 let cameraOff = false;
 let roomName;
 let myPeerConnection;
+let myDataChannel; // dataChannel은 offer를 만드는쪽이 만들어야하고 offer를 만들기전에 만들어야한다.
 
 async function getCameras() {
   try {
@@ -129,6 +130,13 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 
 // on("welcome")은 peerA측에서 돌아가는 코드
 socket.on("welcome", async () => {
+  //video, audio가 아닌 text라면 dataChannel을 이용
+  //offer생성자 즉, 방의 첫번째 사람이 dataChannel을 생성해야한다. 이 때 offer생정 전에 만들어야함
+  myDataChannel = myPeerConnection.createDataChannel("chat");
+  // 만들어진 dataChannel에 meesage이벤트를 등록하여 메시지를 받으면(send()) 반응하도록한다.
+  myDataChannel.addEventListener("message", console.log);
+  console.log("data channel 만들었음");
+
   // 방에 누군가 접속했을 때 offer를 생성한다.
   // 생성된 offer에는 sdp라는 다른 브라우저가 참가할 수 있는 초대장?이 있다.
   const offer = await myPeerConnection.createOffer();
@@ -145,6 +153,12 @@ socket.on("welcome", async () => {
 
 // on("offer")는 peerB측에서 돌아가는 코드
 socket.on("offer", async (offer) => {
+  // 새로운 datachannel이 있으면 알림을 받음
+  myPeerConnection.addEventListener("datachannel", (event) => {
+    myDataChannel = event.channel;
+    myDataChannel.addEventListener("message", console.log);
+  });
+
   console.log("received the offer");
   // 전달 받은 offer로 remoteDescription 설정
   myPeerConnection.setRemoteDescription(offer);
@@ -171,7 +185,23 @@ socket.on("ice", (ice) => {
 
 function makeConnection() {
   // 서로 다른 사용자간의 연결을 위해 생성
-  myPeerConnection = new RTCPeerConnection();
+  myPeerConnection = new RTCPeerConnection({
+    iceServers: [
+      {
+        // STUN 서버는 컴퓨터가 공용 IP주소를 찾게해줌 즉, 어떤것을 request하면 인터넷에서 내가 누군지를 알려줌
+        // 예를들어 다른 wi-fi환경이면 다른 네트워크이기 때문에 정상작동하지 않는데 이 때 STUN서버가 필요하다.
+        // 이것은 google이 제공하는것으로 테스트에만 쓰이고 실제로는 내 소유의 STUN서버로 돌려야한다.
+        // 공용주소를 알아내기위한 STUN서버
+        urls: [
+          "stun:stun.l.google.com:19302",
+          "stun:stun1.l.google.com:19302",
+          "stun:stun2.l.google.com:19302",
+          "stun:stun3.l.google.com:19302",
+          "stun:stun4.l.google.com:19302",
+        ],
+      },
+    ],
+  });
   myPeerConnection.addEventListener("icecandidate", handleIce);
   myPeerConnection.addEventListener("addstream", handleAddStream);
   // 양쪽 브라우저에서 카메라, 마이크 데이터 stream을 받아서 구성  통상의 addStream 대신하는 작업
