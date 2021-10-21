@@ -33,6 +33,9 @@ wsServer.on("connection", (socket) => {
   socket.on("answer", (answer, roomName) => {
     socket.to(roomName).emit("answer", answer);
   });
+  socket.on("ice", (ice, roomName) => {
+    socket.to(roomName).emit("ice", ice);
+  });
 });
 
 // ws://localhost:3000  3000은 ws도 가능

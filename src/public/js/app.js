@@ -134,6 +134,7 @@ socket.on("welcome", async () => {
 
 // on("offer")는 peerB측에서 돌아가는 코드
 socket.on("offer", async (offer) => {
+  console.log("received the offer");
   // 전달 받은 offer로 remoteDescription 설정
   myPeerConnection.setRemoteDescription(offer);
   const answer = await myPeerConnection.createAnswer();
@@ -141,11 +142,18 @@ socket.on("offer", async (offer) => {
   myPeerConnection.setLocalDescription(answer);
   // offer에 대한 답을 answer로 해야하므로
   socket.emit("answer", answer, roomName);
+  console.log("sent the answer");
 });
 
 // on("answer")는 peerA측에서 돌아가는 코드
 socket.on("answer", (answer) => {
   myPeerConnection.setRemoteDescription(answer);
+  console.log("received the answer");
+});
+
+socket.on("ice", (ice) => {
+  myPeerConnection.addIceCandidate(ice);
+  console.log("received candidate");
 });
 
 //RTC Code
@@ -153,8 +161,22 @@ socket.on("answer", (answer) => {
 function makeConnection() {
   // 서로 다른 사용자간의 연결을 위해 생성
   myPeerConnection = new RTCPeerConnection();
-  // 양쪽 브라우저에서 카메라, 마이크 데이터 stream을 받아서 구성
+  myPeerConnection.addEventListener("icecandidate", handleIce);
+  myPeerConnection.addEventListener("addstream", handleAddStream);
+  // 양쪽 브라우저에서 카메라, 마이크 데이터 stream을 받아서 구성  통상의 addStream 대신하는 작업
   myStream.getTracks().forEach((track) => {
     myPeerConnection.addTrack(track, myStream);
   });
+}
+
+function handleIce(data) {
+  // candidate는 브라우저가 소통하는 방법을 알려주는것
+  // peerA와 peerB가 icecandidate 이벤트로 생성한 candidate들을 서로 주고 받음
+  socket.emit("ice", data.candidate, roomName);
+  console.log("sent candidate");
+}
+
+function handleAddStream(data) {
+  const peersFace = document.getElementById("peersFace");
+  peersFace.srcObject = data.stream;
 }
