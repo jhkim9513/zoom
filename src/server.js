@@ -19,17 +19,19 @@ wsServer.on("connection", (socket) => {
     console.log(`Socket Event:${event}`);
   }); */
 
-  socket.on("join_room", (roomName, done) => {
+  socket.on("join_room", (roomName) => {
     console.log(`I'm ${socket.id}`);
     socket.join(roomName);
     console.log(`${socket.id} join ${roomName}`);
 
-    done();
     socket.to(roomName).emit("welcome");
     console.log(socket.rooms);
   });
   socket.on("offer", (offer, roomName) => {
     socket.to(roomName).emit("offer", offer);
+  });
+  socket.on("answer", (answer, roomName) => {
+    socket.to(roomName).emit("answer", answer);
   });
 });
 

@@ -94,17 +94,20 @@ camerasSelect.addEventListener("input", handleCameraChange);
 const welcome = document.getElementById("welcome");
 const welcomeForm = welcome.querySelector("form");
 
-async function startMedia() {
+async function initCall() {
   welcome.hidden = true;
   call.hidden = false;
   await getMedia();
   makeConnection();
 }
 
-function handleWelcomeSubmit(event) {
+async function handleWelcomeSubmit(event) {
   event.preventDefault();
   const input = welcomeForm.querySelector("input");
-  socket.emit("join_room", input.value, startMedia);
+  // socketIO는 굉장히 빠르기 때문에 makeConnection함수를 콜백으로 보내서 실행한다면
+  // myPeerConnection이 생성이 안되있을 수 있다. 때문에 순서를 바꿔 getMedia()를 먼저 실행하도록한다.
+  await initCall();
+  socket.emit("join_room", input.value);
   roomName = input.value;
   input.value = "";
 }
@@ -113,6 +116,7 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 
 // Socket cdoe
 
+// on("welcome")은 peerA측에서 돌아가는 코드
 socket.on("welcome", async () => {
   // 방에 누군가 접속했을 때 offer를 생성한다.
   // 생성된 offer에는 sdp라는 다른 브라우저가 참가할 수 있는 초대장?이 있다.
@@ -128,8 +132,20 @@ socket.on("welcome", async () => {
   // 비디오와 오디오를 전달하는데에는 서버가 필요업지만 offer를 주고받기 위해서는 서버가 필요하다.
 });
 
-socket.on("offer", (offer) => {
-  console.log(offer);
+// on("offer")는 peerB측에서 돌아가는 코드
+socket.on("offer", async (offer) => {
+  // 전달 받은 offer로 remoteDescription 설정
+  myPeerConnection.setRemoteDescription(offer);
+  const answer = await myPeerConnection.createAnswer();
+  // answer를 setLocal하고
+  myPeerConnection.setLocalDescription(answer);
+  // offer에 대한 답을 answer로 해야하므로
+  socket.emit("answer", answer, roomName);
+});
+
+// on("answer")는 peerA측에서 돌아가는 코드
+socket.on("answer", (answer) => {
+  myPeerConnection.setRemoteDescription(answer);
 });
 
 //RTC Code
