@@ -114,10 +114,18 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 // Socket cdoe
 
 socket.on("welcome", async () => {
+  // 방에 누군가 접속했을 때 offer를 생성한다.
+  // 생성된 offer에는 sdp라는 다른 브라우저가 참가할 수 있는 초대장?이 있다.
   const offer = await myPeerConnection.createOffer();
+  // offer를 가지고나면 이 offer로 연결을 구성해야한다.
   myPeerConnection.setLocalDescription(offer);
+
+  /* peerA가 방장이라면 peerB가 접속했을 때 peerA가 offer를 생성하고
+    setLocalDescription하고 이 offer를 peerB로 보낸다.
+  */
   console.log("sent the offer");
   socket.emit("offer", offer, roomName);
+  // 비디오와 오디오를 전달하는데에는 서버가 필요업지만 offer를 주고받기 위해서는 서버가 필요하다.
 });
 
 socket.on("offer", (offer) => {
@@ -127,7 +135,9 @@ socket.on("offer", (offer) => {
 //RTC Code
 
 function makeConnection() {
+  // 서로 다른 사용자간의 연결을 위해 생성
   myPeerConnection = new RTCPeerConnection();
+  // 양쪽 브라우저에서 카메라, 마이크 데이터 stream을 받아서 구성
   myStream.getTracks().forEach((track) => {
     myPeerConnection.addTrack(track, myStream);
   });
